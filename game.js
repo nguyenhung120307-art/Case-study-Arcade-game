@@ -126,4 +126,3 @@ function updateGame() {
 
 // Start the game loop
 updateGame();
-updateGame();
