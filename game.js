@@ -6,10 +6,15 @@ const topScoreDisplay = document.getElementById("top-score-val");
 // Game Variables
 let score = 0;
 let gameOver = false;
-let isPaused = false; // Tracks if the game is paused
+let isPaused = false;
+let isNewRecord = false; 
 
-// Load Top Score from browser storage (default to 0 if it doesn't exist yet)
-let topScore = localStorage.getItem("arcadeTopScore") || 0;
+// Create and Preload the Celebration Image
+const celebrationImg = new Image();
+celebrationImg.src = "king-nasir.jpg"; // <-- Keep this matching your image file name
+
+// Load Top Score from browser storage
+let topScore = parseInt(localStorage.getItem("arcadeTopScore")) || 0;
 topScoreDisplay.textContent = topScore;
 
 // Player Paddle Properties
@@ -30,20 +35,51 @@ const target = {
     speed: 3
 };
 
+// --- NEW FEATURE: RETRY FUNCTION ---
+// This resets the state completely to restart a fresh game
+function retryGame() {
+    score = 0;
+    gameOver = false;
+    isPaused = false;
+    isNewRecord = false;
+    
+    // Reset HUD text
+    scoreDisplay.textContent = score;
+    
+    // Reset object positions
+    paddle.x = 175;
+    paddle.dx = 0;
+    
+    target.x = Math.random() * (canvas.width - target.size);
+    target.y = 0;
+    target.speed = 3; // Reset speed difficulty back to baseline
+    
+    // Restart the animation loop engine
+    updateGame();
+}
+
 // Listen for keyboard controls
 document.addEventListener("keydown", (e) => {
-    // Movement
     if (e.key === "ArrowRight" || e.key === "Right") paddle.dx = paddle.speed;
     if (e.key === "ArrowLeft" || e.key === "Left") paddle.dx = -paddle.speed;
 
-    // Pause functionality toggled with 'P' or 'Spacebar'
-    if (e.key === "p" || e.key === "P" || e.key === " ") {
+    // Handle P key (Only for pausing)
+    if (e.key === "p" || e.key === "P") {
         if (!gameOver) {
             isPaused = !isPaused;
-            if (!isPaused) {
-                // If we unpaused, kickstart the loop back up
-                updateGame();
-            }
+            if (!isPaused) updateGame();
+        }
+    }
+
+    // Handle Spacebar (Pause during gameplay, Retry on Game Over)
+    if (e.key === " ") {
+        if (gameOver) {
+            // Prevent spacebar from scrolling down the webpage window
+            e.preventDefault(); 
+            retryGame();
+        } else {
+            isPaused = !isPaused;
+            if (!isPaused) updateGame();
         }
     }
 });
@@ -62,49 +98,68 @@ function resetTarget() {
 
 // The Core Game Loop
 function updateGame() {
-    // 1. If Game Over, show screen and update high scores
+    // --- GAME OVER STATE ---
     if (gameOver) {
-        ctx.fillStyle = "white";
-        ctx.font = "30px Courier New";
-        ctx.fillText("GAME OVER", 110, 250);
-        
-        // Check if current score beat the historical top score
-        if (score > topScore) {
-            topScore = score;
-            topScoreDisplay.textContent = topScore;
-            localStorage.setItem("arcadeTopScore", topScore); // Save to browser
+        ctx.fillStyle = "#16213e";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (isNewRecord) {
+            ctx.strokeStyle = "#ffdd67";
+            ctx.lineWidth = 5;
+            ctx.strokeRect(40, 60, 320, 320);
+            ctx.drawImage(celebrationImg, 45, 65, 310, 310);
+
+            ctx.fillStyle = "#ffdd67";
+            ctx.font = "bold 22px Courier New";
+            ctx.fillText("NEW RECORD DETECTED!", 75, 35);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "18px Courier New";
+            ctx.fillText(`Crown the Champ: ${score}!`, 100, 415);
+        } else {
+            ctx.fillStyle = "#e94560";
+            ctx.font = "30px Courier New";
+            ctx.fillText("GAME OVER", 110, 200);
+            
+            ctx.fillStyle = "white";
+            ctx.font = "18px Courier New";
+            ctx.fillText(`Score: ${score}`, 155, 250);
         }
+
+        // --- NEW VISUAL INSTRUCTION ---
+        ctx.fillStyle = "#00fff5";
+        ctx.font = "bold 16px Courier New";
+        ctx.fillText("Press SPACEBAR to Play Again", 65, 460);
+        
         return;
     }
 
-    // 2. If Paused, overlay a menu and halt the animation loop
+    // --- PAUSE STATE ---
     if (isPaused) {
-        ctx.fillStyle = "rgba(22, 33, 62, 0.5)"; // Semi-transparent overlay
+        ctx.fillStyle = "rgba(22, 33, 62, 0.5)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
         ctx.fillStyle = "#ffdd67";
         ctx.font = "30px Courier New";
         ctx.fillText("PAUSED", 145, 250);
-        return; // Stops running requestAnimationFrame, freezing the state
+        return;
     }
 
-    // 3. Clear the canvas frame
+    // --- NORMAL GAMEPLAY STATE ---
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 4. Move & Draw Paddle
+    // Paddle
     paddle.x += paddle.dx;
     if (paddle.x < 0) paddle.x = 0;
     if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
-    
     ctx.fillStyle = "#00fff5";
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
-    // 5. Move & Draw Falling Target
+    // Falling Target
     target.y += target.speed;
     ctx.fillStyle = "#e94560";
     ctx.fillRect(target.x, target.y, target.size, target.size);
 
-    // 6. Collision Detection (Catch)
+    // Collision Detection
     if (
         target.y + target.size >= paddle.y &&
         target.x + target.size >= paddle.x &&
@@ -115,12 +170,17 @@ function updateGame() {
         resetTarget();
     }
 
-    // 7. Miss Condition (Hit floor)
+    // Floor Collision / Trigger Game Over
     if (target.y > canvas.height) {
         gameOver = true;
+        if (score > topScore) {
+            isNewRecord = true;
+            topScore = score;
+            topScoreDisplay.textContent = topScore;
+            localStorage.setItem("arcadeTopScore", topScore);
+        }
     }
 
-    // Continue the loop
     requestAnimationFrame(updateGame);
 }
 
