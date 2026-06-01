@@ -9,9 +9,16 @@
 <body>
 
     <div id="game-container">
-        <div id="scoreboard">Score: <span id="score-val">0</span></div>
+        <!-- Added Top Score Display -->
+        <div id="scoreboard">
+            Score: <span id="score-val">0</span> | Top Score: <span id="top-score-val">0</span>
+        </div>
+        
         <canvas id="gameCanvas" width="400" height="500"></canvas>
-        <p>Use your <b>Left</b> and <b>Right</b> arrow keys to move the paddle!</p>
+        
+        <!-- Updated control instructions -->
+        <p>Use <b>Left/Right Arrows</b> to move.</p>
+        <p>Press <b>P</b> or <b>Spacebar</b> to Pause / Unpause.</p>
     </div>
 
     <script src="game.js"></script>
